@@ -170,10 +170,18 @@ func InstallRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 }
 
 func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart *chart.Chart) error {
-	currentRelease, err := cfg.Releases.Last(hr.Name)
+	klog.V(4).Infof("===> update helm release %s ", hr.Name)
+	klog.V(4).Infof("===> update helm release name %s ", getReleaseName(hr))
+
+	currentRelease, err := cfg.Releases.Last(getReleaseName(hr))
 	if err != nil {
 		return err
 	}
+
+	klog.V(4).Infof("===> release found")
+
+	klog.V(4).Infof("===> update helm release %s ", cfg.Releases.Name())
+
 	currentCRDs := make(map[string]*chart.CRD, len(currentRelease.Chart.CRDObjects()))
 	for _, crd := range currentRelease.Chart.CRDObjects() {
 		currentCRDs[crd.Name] = &crd
