@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -168,8 +169,44 @@ func InstallRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	return client.Run(chart, vals)
 }
 
+func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart *chart.Chart) error {
+	currentRelease, err := cfg.Releases.Last(hr.Name)
+	if err != nil {
+		return err
+	}
+	currentCRDs := make(map[string]*chart.CRD, len(currentRelease.Chart.CRDObjects()))
+	for _, crd := range currentRelease.Chart.CRDObjects() {
+		currentCRDs[crd.Name] = &crd
+	}
+
+	for _, targetCRD := range targetChart.CRDObjects() {
+		if currentCRD, ok := currentCRDs[targetCRD.Name]; ok {
+			currentResource, err := cfg.KubeClient.Build(bytes.NewBuffer(currentCRD.File.Data), false)
+			if err != nil {
+				return err
+			}
+			targetResource, err := cfg.KubeClient.Build(bytes.NewBuffer(targetCRD.File.Data), true)
+			if err != nil {
+				return err
+			}
+			_, err = cfg.KubeClient.Update(currentResource, targetResource, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func UpgradeRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+
+	// TODO 判断条件
+	err := replaceCRD(cfg, hr, chart)
+	if err != nil {
+		return nil, err
+	}
+
 	client := action.NewUpgrade(cfg)
 	client.MaxHistory = cfg.Releases.MaxHistory // need to rewire it here
 	client.Timeout = time.Duration(hr.Spec.TimeoutSeconds) * time.Second
@@ -189,9 +226,11 @@ func UpgradeRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	if hr.Spec.SkipCRDs != nil {
 		client.SkipCRDs = *hr.Spec.SkipCRDs
 	}
+
 	if hr.Spec.DisableHooks != nil {
 		client.DisableHooks = *hr.Spec.DisableHooks
 	}
+
 	return client.Run(getReleaseName(hr), chart, vals)
 }
 
