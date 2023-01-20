@@ -177,6 +177,7 @@ func getCRDsRecursively(charts []*chart.Chart) map[string]chart.CRD {
 			crds[crd.Name] = crd
 		}
 		charts = append(charts, c.Dependencies()...)
+		klog.V(4).Infof("===> literal chart  %s, deps: %d ", c.Name(), len(c.Dependencies()))
 	}
 	return crds
 }
@@ -195,7 +196,10 @@ func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart 
 	klog.V(4).Infof("===> update helm release %s ", cfg.Releases.Name())
 
 	currentCRDs := getCRDsRecursively([]*chart.Chart{currentRelease.Chart})
-	klog.V(4).Infof("===> current crds len", len(currentCRDs))
+	klog.V(4).Infof("===> current crds len, %d", len(currentCRDs))
+
+	//rc,_ :=cfg.RESTClientGetter.ToRESTConfig()
+	//rc.
 
 	for _, targetCRD := range getCRDsRecursively([]*chart.Chart{targetChart}) {
 		klog.V(4).Infof("===> handle target crd", targetCRD.Name)
