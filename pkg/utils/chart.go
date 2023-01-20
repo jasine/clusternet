@@ -142,7 +142,7 @@ func CheckIfInstallable(chart *chart.Chart) error {
 func InstallRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 	if hr.Spec.ReplaceCRDs != nil && *hr.Spec.ReplaceCRDs {
-		err := replaceCRD(cfg, hr, chart)
+		err := replaceCRD(cfg, chart)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +180,7 @@ func UpgradeRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 
 	if hr.Spec.ReplaceCRDs != nil && *hr.Spec.ReplaceCRDs {
-		err := replaceCRD(cfg, hr, chart)
+		err := replaceCRD(cfg, chart)
 		if err != nil {
 			return nil, err
 		}
@@ -347,8 +347,7 @@ func getReleaseName(hr *appsapi.HelmRelease) string {
 	return releaseName
 }
 
-func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart *chart.Chart) error {
-	klog.V(4).Infof("===> update helm release name %s ", getReleaseName(hr))
+func replaceCRD(cfg *action.Configuration, targetChart *chart.Chart) error {
 	queue := []*chart.Chart{targetChart}
 	for _, c := range queue {
 		for _, crd := range c.CRDObjects() {
