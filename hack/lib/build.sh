@@ -146,12 +146,12 @@ clusternet::docker::image() {
 
     clusternet::golang::setup_platform "${platform}"
     tag=$(git describe --tags --always)
-    echo "Building docker image ${REGISTRY}/clusternet/${target}-${GOARCH}:${tag} ..."
+    echo "Building docker image ccr.ccs.tencentyun.com/solution/${target}:${tag} ..."
 
     docker buildx build \
       --push \
       --platform="$1" \
-      -t "ccr.ccs.tencentyun.com/solution/$2:${tag}" \
+      -t "ccr.ccs.tencentyun.com/solution/${target}:${tag}" \
       --build-arg BASEIMAGE="${BASEIMAGE}" \
       --build-arg GOVERSION="${GOVERSION}" \
       --build-arg LDFLAGS="${LDFLAGS}" \
