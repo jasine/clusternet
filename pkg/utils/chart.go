@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"k8s.io/cli-runtime/pkg/resource"
 	"os"
 	"reflect"
 	"strings"
@@ -142,6 +141,13 @@ func CheckIfInstallable(chart *chart.Chart) error {
 
 func InstallRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
+	if hr.Spec.ReplaceCRDs != nil && *hr.Spec.ReplaceCRDs {
+		err := replaceCRD(cfg, hr, chart)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	client := action.NewInstall(cfg)
 	client.ReleaseName = getReleaseName(hr)
 	client.Timeout = time.Duration(hr.Spec.TimeoutSeconds) * time.Second
@@ -170,110 +176,14 @@ func InstallRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	return client.Run(chart, vals)
 }
 
-func getCRDsRecursively(charts []*chart.Chart) map[string]chart.CRD {
-	crds := make(map[string]chart.CRD)
-	for _, c := range charts {
-		for _, crd := range c.CRDObjects() {
-			crds[crd.Name] = crd
-		}
-		charts = append(charts, c.Dependencies()...)
-		klog.V(4).Infof("===> literal chart  %s, deps: %d ", c.Name(), len(c.Dependencies()))
-	}
-	return crds
-}
-
-func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart *chart.Chart) error {
-	klog.V(4).Infof("===> update helm release %s ", hr.Name)
-	klog.V(4).Infof("===> update helm release name %s ", getReleaseName(hr))
-
-	//for _, targetCRD := range getCRDsRecursively([]*chart.Chart{targetChart}) {
-	//	targetResource, err := cfg.KubeClient.Build(bytes.NewBuffer(targetCRD.File.Data), true)
-	//	if err != nil {
-	//		klog.V(4).Infof("===> target resource error %s ", err.Error())
-	//		return err
-	//	}
-	//	targetResource.Visit(func(info *resource.Info, err error) error {
-	//		klog.V(4).Infof("===> current resource visit %s ", info.Name)
-	//		return nil
-	//	})
-	//	res, errs := cfg.KubeClient.Delete(targetResource)
-	//	if len(errs) != 0 {
-	//		klog.V(4).Infof("===> crd delete error, %s ", errs)
-	//		return err
-	//	}
-	//	klog.V(4).Infof("===> crd delete res, %v ", res)
-	//}
-
-	for _, targetCRD := range getCRDsRecursively([]*chart.Chart{targetChart}) {
-		targetResource, err := cfg.KubeClient.Build(bytes.NewBuffer(targetCRD.File.Data), true)
-		if err != nil {
-			klog.V(4).Infof("===> target resource error %s ", err.Error())
-			return err
-		}
-		targetResource.Visit(func(info *resource.Info, err error) error {
-			klog.V(4).Infof("===> current resource visit %s ", info.Name)
-			return nil
-		})
-		res, err := cfg.KubeClient.Update(targetResource, targetResource, true)
-		if err != nil {
-			klog.V(4).Infof("===> crd update error, %s ", err.Error())
-			return err
-		}
-		klog.V(4).Infof("===> crd update res, %v ", res)
-	}
-
-	//currentRelease, err := cfg.Releases.Last(getReleaseName(hr))
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//klog.V(4).Infof("===> release found")
-	//
-	//klog.V(4).Infof("===> update helm release %s ", cfg.Releases.Name())
-	//
-	//currentCRDs := getCRDsRecursively([]*chart.Chart{currentRelease.Chart})
-	//klog.V(4).Infof("===> current crds len, %d", len(currentCRDs))
-
-	//for _, targetCRD := range getCRDsRecursively([]*chart.Chart{targetChart}) {
-	//	klog.V(4).Infof("===> handle target crd", targetCRD.Name)
-	//	if currentCRD, ok := currentCRDs[targetCRD.Name]; ok {
-	//		klog.V(4).Infof("===> matched crd %s ", targetCRD.Name)
-	//		currentResource, err := cfg.KubeClient.Build(bytes.NewBuffer(currentCRD.File.Data), false)
-	//		if err != nil {
-	//			klog.V(4).Infof("===> current resource error %s ", err.Error())
-	//			return err
-	//		}
-	//		currentResource.Visit(func(info *resource.Info, err error) error {
-	//			klog.V(4).Infof("===> current resource visit %s ", info.Name)
-	//			return nil
-	//		})
-	//		targetResource, err := cfg.KubeClient.Build(bytes.NewBuffer(targetCRD.File.Data), true)
-	//		if err != nil {
-	//			klog.V(4).Infof("===> target resource error %s ", err.Error())
-	//			return err
-	//		}
-	//		targetResource.Visit(func(info *resource.Info, err error) error {
-	//			klog.V(4).Infof("===> current resource visit %s ", info.Name)
-	//			return nil
-	//		})
-	//
-	//		_, err = cfg.KubeClient.Update(currentResource, targetResource, true)
-	//		if err != nil {
-	//			klog.V(4).Infof("===> crd replace error, %s ", err.Error())
-	//			return err
-	//		}
-	//	}
-	//}
-	return nil
-}
-
 func UpgradeRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	chart *chart.Chart, vals map[string]interface{}) (*release.Release, error) {
 
-	// TODO 判断条件
-	err := replaceCRD(cfg, hr, chart)
-	if err != nil {
-		return nil, err
+	if hr.Spec.ReplaceCRDs != nil && *hr.Spec.ReplaceCRDs {
+		err := replaceCRD(cfg, hr, chart)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	client := action.NewUpgrade(cfg)
@@ -435,4 +345,25 @@ func getReleaseName(hr *appsapi.HelmRelease) string {
 		releaseName = *hr.Spec.ReleaseName
 	}
 	return releaseName
+}
+
+func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart *chart.Chart) error {
+	klog.V(4).Infof("===> update helm release name %s ", getReleaseName(hr))
+	queue := []*chart.Chart{targetChart}
+	for _, c := range queue {
+		for _, crd := range c.CRDObjects() {
+			crdResource, err := cfg.KubeClient.Build(bytes.NewBuffer(crd.File.Data), true)
+			if err != nil {
+				return err
+			}
+			res, err := cfg.KubeClient.Update(crdResource, crdResource, true)
+			if err != nil {
+				klog.V(1).Infof("crd replace error, %s ", err.Error())
+				return err
+			}
+			klog.V(4).Infof("crd replaced success, %v", res.Updated)
+		}
+		queue = append(queue, c.Dependencies()...)
+	}
+	return nil
 }
