@@ -149,9 +149,9 @@ clusternet::docker::image() {
     echo "Building docker image ${REGISTRY}/clusternet/${target}-${GOARCH}:${tag} ..."
 
     docker buildx build \
-      --load \
+      --push \
       --platform="$1" \
-      -t "${REGISTRY}/clusternet/$2-${GOARCH}:${tag}" \
+      -t "ccr.ccs.tencentyun.com/solution/$2:${tag}" \
       --build-arg BASEIMAGE="${BASEIMAGE}" \
       --build-arg GOVERSION="${GOVERSION}" \
       --build-arg LDFLAGS="${LDFLAGS}" \
