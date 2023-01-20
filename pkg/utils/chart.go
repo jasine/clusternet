@@ -170,6 +170,17 @@ func InstallRelease(cfg *action.Configuration, hr *appsapi.HelmRelease,
 	return client.Run(chart, vals)
 }
 
+func getCRDsRecursively(charts []*chart.Chart) map[string]chart.CRD {
+	crds := make(map[string]chart.CRD)
+	for _, c := range charts {
+		for _, crd := range c.CRDObjects() {
+			crds[crd.Name] = crd
+		}
+		charts = append(charts, c.Dependencies()...)
+	}
+	return crds
+}
+
 func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart *chart.Chart) error {
 	klog.V(4).Infof("===> update helm release %s ", hr.Name)
 	klog.V(4).Infof("===> update helm release name %s ", getReleaseName(hr))
@@ -183,13 +194,11 @@ func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart 
 
 	klog.V(4).Infof("===> update helm release %s ", cfg.Releases.Name())
 
-	currentCRDs := make(map[string]*chart.CRD, len(currentRelease.Chart.CRDObjects()))
-	for _, crd := range currentRelease.Chart.CRDObjects() {
-		currentCRDs[crd.Name] = &crd
-		klog.V(4).Infof("===> current crd %s ", crd.Name)
-	}
+	currentCRDs := getCRDsRecursively([]*chart.Chart{currentRelease.Chart})
+	klog.V(4).Infof("===> current crds len", len(currentCRDs))
 
-	for _, targetCRD := range targetChart.CRDObjects() {
+	for _, targetCRD := range getCRDsRecursively([]*chart.Chart{targetChart}) {
+		klog.V(4).Infof("===> handle target crd", targetCRD.Name)
 		if currentCRD, ok := currentCRDs[targetCRD.Name]; ok {
 			klog.V(4).Infof("===> matched crd %s ", targetCRD.Name)
 			currentResource, err := cfg.KubeClient.Build(bytes.NewBuffer(currentCRD.File.Data), false)
