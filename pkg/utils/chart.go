@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"k8s.io/cli-runtime/pkg/resource"
 	"os"
 	"reflect"
 	"strings"
@@ -185,20 +186,34 @@ func replaceCRD(cfg *action.Configuration, hr *appsapi.HelmRelease, targetChart 
 	currentCRDs := make(map[string]*chart.CRD, len(currentRelease.Chart.CRDObjects()))
 	for _, crd := range currentRelease.Chart.CRDObjects() {
 		currentCRDs[crd.Name] = &crd
+		klog.V(4).Infof("===> current crd %s ", crd.Name)
 	}
 
 	for _, targetCRD := range targetChart.CRDObjects() {
 		if currentCRD, ok := currentCRDs[targetCRD.Name]; ok {
+			klog.V(4).Infof("===> matched crd %s ", targetCRD.Name)
 			currentResource, err := cfg.KubeClient.Build(bytes.NewBuffer(currentCRD.File.Data), false)
 			if err != nil {
+				klog.V(4).Infof("===> current resource error %s ", err.Error())
 				return err
 			}
+			currentResource.Visit(func(info *resource.Info, err error) error {
+				klog.V(4).Infof("===> current resource visit %s ", info.Name)
+				return nil
+			})
 			targetResource, err := cfg.KubeClient.Build(bytes.NewBuffer(targetCRD.File.Data), true)
 			if err != nil {
+				klog.V(4).Infof("===> target resource error %s ", err.Error())
 				return err
 			}
+			targetResource.Visit(func(info *resource.Info, err error) error {
+				klog.V(4).Infof("===> current resource visit %s ", info.Name)
+				return nil
+			})
+
 			_, err = cfg.KubeClient.Update(currentResource, targetResource, true)
 			if err != nil {
+				klog.V(4).Infof("===> crd replace error, %s ", err.Error())
 				return err
 			}
 		}
