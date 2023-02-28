@@ -293,6 +293,7 @@ func (l *Localizer) handleGlobalization(glob *appsapi.Globalization) error {
 }
 
 func (l *Localizer) ApplyOverridesToDescription(desc *appsapi.Description) error {
+	klog.V(1).Infof("====== len, overrides enter")
 	var allErrs []error
 	switch desc.Spec.Deployer {
 	case appsapi.DescriptionHelmDeployer:

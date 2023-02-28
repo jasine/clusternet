@@ -692,6 +692,8 @@ func (deployer *Deployer) handleBase(base *appsapi.Base) error {
 }
 
 func (deployer *Deployer) populateDescriptions(base *appsapi.Base) error {
+	klog.V(1).Infof("====== len, deployer enter: ")
+
 	var allChartRefs []appsapi.ChartReference
 	var allCharts []*appsapi.HelmChart
 	var allManifests []*appsapi.Manifest
