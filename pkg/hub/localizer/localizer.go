@@ -293,7 +293,6 @@ func (l *Localizer) handleGlobalization(glob *appsapi.Globalization) error {
 }
 
 func (l *Localizer) ApplyOverridesToDescription(desc *appsapi.Description) error {
-	klog.V(1).Infof("====== len, overrides enter")
 	var allErrs []error
 	switch desc.Spec.Deployer {
 	case appsapi.DescriptionHelmDeployer:
@@ -319,6 +318,9 @@ func (l *Localizer) ApplyOverridesToDescription(desc *appsapi.Description) error
 				allErrs = append(allErrs, err)
 				continue
 			}
+
+			klog.V(1).Infof("====== len overrides fallthrough")
+
 			desc.Spec.Raw[idx] = genericResult
 
 			// apply default overrides for helm charts

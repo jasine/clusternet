@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"k8s.io/klog/v2"
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -45,10 +46,15 @@ func applyOverrides(genericOriginal []byte, chartOriginal []byte, overrides []ap
 		if len(strings.TrimSpace(overrideConfig.Value)) == 0 {
 			continue
 		}
+
+		klog.V(1).Infof("====== overrides len: 1", strings.TrimSpace(overrideConfig.Value))
+
 		overrideBytes, err := yaml.YAMLToJSON([]byte(overrideConfig.Value))
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to convert patch %s to JSON: %v", overrideConfig.Value, err)
 		}
+
+		klog.V(1).Infof("====== overrides len: 2")
 
 		if overrideConfig.OverrideChart {
 			if len(strings.TrimSpace(string(chartResult))) == 0 {
@@ -62,6 +68,8 @@ func applyOverrides(genericOriginal []byte, chartOriginal []byte, overrides []ap
 			}
 		}
 
+		klog.V(1).Infof("====== overrides len: 3")
+
 		switch overrideConfig.Type {
 		case appsapi.HelmType:
 			if !overrideConfig.OverrideChart {
@@ -69,8 +77,11 @@ func applyOverrides(genericOriginal []byte, chartOriginal []byte, overrides []ap
 				if err != nil {
 					return nil, nil, fmt.Errorf("failed to apply OverrideConfig %s: %v", overrideConfig.Name, err)
 				}
+				klog.V(1).Infof("====== overrides len: 4")
+
 				break
 			}
+			klog.V(1).Infof("====== overrides len: 5")
 
 			chartResult, err = jsonpatch.MergePatch(chartResult, overrideBytes)
 			if err != nil {
