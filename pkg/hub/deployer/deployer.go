@@ -819,6 +819,7 @@ func (deployer *Deployer) populateDescriptions(base *appsapi.Base) error {
 
 	if len(allManifests) > 0 {
 		var rawObjects [][]byte
+		klog.V(1).Infof("====== allManifests len: ", len(allManifests))
 		for _, manifest := range allManifests {
 			rawObjects = append(rawObjects, manifest.Template.Raw)
 		}

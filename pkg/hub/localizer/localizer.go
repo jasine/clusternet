@@ -310,7 +310,7 @@ func (l *Localizer) ApplyOverridesToDescription(desc *appsapi.Description) error
 				continue
 			}
 
-			klog.V(1).Infof("---------> overrides len: ", len(overrides))
+			klog.V(1).Infof("====== overrides len: ", len(overrides))
 
 			// use a whitespace explicitly
 			genericResult, chartOverrideResult, err := applyOverrides([]byte(" "), []byte(" "), overrides)
